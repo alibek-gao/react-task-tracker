@@ -1,45 +1,59 @@
-import {useState} from 'react';
+import {useState,useEffect} from 'react';
 import Header from "./components/Header";
 import Tasks from "./components/Tasks";
 import AddTask from "./components/AddTask";
 
 function App() {
   const [showAddTask,setShowAddTask] = useState(false);
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      text: 'Task 1',
-      day: '2020-10-11',
-      reminder: true,
-    },
-    {
-      id: 2,
-      text: 'Task 2',
-      day: '2020-10-12',
-      reminder: true,
-    },
-    {
-      id: 3,
-      text: 'Task 3',
-      day: '2020-10-13',
-      reminder: true,
-    }
-  ]);
+  const [tasks, setTasks] = useState([]);
+
+  const fetchTasks = async () => {
+    const res = await fetch('http://localhost:5000/tasks');
+    return await res.json();
+  }
+
+  const fetchTask = async (id) => {
+    const res = await fetch(`http://localhost:5000/tasks/${id}`);
+    return await res.json();
+  }
+
+  useEffect(() => {
+    fetchTasks().then(tasks => {
+      setTasks(tasks);
+    });
+  },[])
 
   const deleteTask = (id) => {
-    setTasks(tasks.filter(task => task.id !== id));
+    fetch(`http://localhost:5000/tasks/${id}`,{method:'DELETE'})
+      .then(() => setTasks(tasks.filter(task => task.id !== id)));
   }
 
   const toggleReminder = (id) => {
-    setTasks(tasks.map((task =>
-      task.id === id ? {...task, reminder: !task.reminder} : task
-    )));
+    fetchTask(id)
+      .then(task => fetch(`http://localhost:5000/tasks/${id}`,{
+        method:'PUT',
+        body: JSON.stringify({...task,reminder: !task.reminder}),
+        headers: {
+          'Content-type': 'application/json; charset=UTF-8'
+        }
+      }))
+      .then(res => res.json())
+      .then(updatedTask => setTasks(tasks.map((task =>
+          task.id === updatedTask.id ? updatedTask : task
+      ))));
+
   }
 
   const addTask = (task) => {
-    const id = Math.floor(Math.random() * 10000) + 1;
-    const newTask = {...task,id};
-    setTasks([...tasks,newTask]);
+    fetch(`http://localhost:5000/tasks/`,{
+      method:'POST',
+      body: JSON.stringify(task),
+      headers: {
+        'Content-type': 'application/json; charset=UTF-8'
+      }
+    })
+      .then(res => res.json())
+      .then(task => setTasks([...tasks,task]));
   }
 
   return (
